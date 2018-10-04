@@ -1,5 +1,5 @@
 import random
-from math import sqrt
+from math import sqrt, floor
 
 try:
     from game import Arena, Colors, Display, Void
@@ -196,7 +196,7 @@ class Bot(object):
             if tr <= self.mothership_proximity:
                 self.move_away(ms)
                 return
-            if ms.target and self.attacks and not self.in_range(ms.target):
+            if ms.target and self.attacks and ms.target not in self.field_of_view:
                 self.move_towards(ms.target)
                 return
 
@@ -212,7 +212,7 @@ class Bot(object):
         self.rmove()
 
     def in_range(self, target):
-        return self.target_range(target) <= self.range - 1
+        return self.target_range(target) <= self.range
 
     def rmove(self):
         rxl = self.grid_x - 1
@@ -274,7 +274,7 @@ class Bot(object):
 
     def target_range(self, target):
         xd, yd = target.grid_x - self.grid_x, target.grid_y - self.grid_y
-        return int(sqrt(xd * xd + yd * yd))
+        return int(floor(sqrt(xd * xd + yd * yd)))
 
     def attack(self):
         if not self.target or self.target_range(self.target) > self.range:
@@ -321,9 +321,9 @@ class AttackBot(Bot):
         self.atk = (5, 10)
         self.speed = 3
         self.color = Colors.ATTACK
-        self.range = 3
+        self.range = 5
         self.fov = 7
-        self.mothership_range = 12
+        self.mothership_range = 10
 
 
 class DefenseBot(Bot):
@@ -336,7 +336,7 @@ class DefenseBot(Bot):
         self.color = Colors.DEFENSE
         self.fov = 6
         self.range = 2
-        self.mothership_range = 3
+        self.mothership_range = 6
 
 
 class RangedBot(Bot):
@@ -348,8 +348,8 @@ class RangedBot(Bot):
         self.speed = 2
         self.color = Colors.RANGED
         self.fov = 10
-        self.range = 8
-        self.mothership_range = 8
+        self.range = 10
+        self.mothership_range = 5
 
 
 class RepairBot(Bot):
@@ -362,7 +362,7 @@ class RepairBot(Bot):
         self.color = Colors.REPAIR
         self.fov = 6
         self.range = 5
-        self.mothership_range = 7
+        self.mothership_range = 5
         self.repairs = True
         self.attacks = False
 
@@ -475,5 +475,17 @@ class KamikazeBot(Bot):
         return self.damage * random.randint(*self.atk) - (random.randint(*self.target.defense) * 0.25)
 
     def attack(self):
-        Bot.attack(self)
+        if not self.target or self.target_range(self.target) > self.range:
+            return False
+
+        dmg = self._get_dmg()
+        self.target.hp -= dmg
+        if self.target.hp <= 0:
+            self.target.destroy()
+
+        for rng, bot in self.in_fov():
+            if bot.swarm != self.swarm and bot.swarm != 'Supplies' and rng <= self.range:
+                bot.hp -= self._get_dmg()
+                if bot.hp <= 0:
+                    bot.destroy()
         self.destroy()

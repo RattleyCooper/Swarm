@@ -17,7 +17,6 @@ def setup():
     q1 = Queue()
     QueueControl.queues.append(q1)
 
-    Settings.display_size = 1840, 1000
     Settings.bot_size = 10, 10
     Display.size = Settings.display_size
     BOT_SIZE = Settings.bot_size
