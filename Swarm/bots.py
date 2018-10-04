@@ -196,8 +196,9 @@ class Bot(object):
             if tr <= self.mothership_proximity:
                 self.move_away(ms)
                 return
-            if ms.target and self.attacks:
+            if ms.target and self.attacks and not self.in_range(ms.target):
                 self.move_towards(ms.target)
+                return
 
         # If there is a target and it is out of range, move towards it
         if self.target and not self.in_range(self.target):
@@ -211,7 +212,7 @@ class Bot(object):
         self.rmove()
 
     def in_range(self, target):
-        return self.target_range(self.target) <= self.range - 1
+        return self.target_range(target) <= self.range - 1
 
     def rmove(self):
         rxl = self.grid_x - 1
