@@ -150,6 +150,12 @@ def main(clock, screen, pygame, arena, done):
         all_bots = arena.all_bots() + arena.supplies
 
         for bot in all_bots:
+            if bot.is_dead:
+                arena.remove_bot(bot)
+                if bot.swarm != 'Supplies':
+                    bot.swarm.remove(bot)
+                del bot
+                continue
             bot.detect()
             if bot.target:
                 pygame.draw.line(screen, bot.color, [bot.grid_x*10, bot.grid_y*10], [bot.target.grid_x*10, bot.target.grid_y*10], 1)
