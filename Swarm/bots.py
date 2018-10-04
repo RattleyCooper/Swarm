@@ -149,7 +149,11 @@ class Bot(object):
 
     def _update_fov(self):
         self.field_of_view = []
-        for bot in self.arena.bots + self.arena.supplies:
+        half_fov = self.fov // 2
+        grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
+        grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
+        potential_sightings = (self.arena.grid[gx][gy] for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is not None)
+        for bot in potential_sightings:
             tr = self.target_range(bot)
             if tr <= self.fov:
                 self.field_of_view.append((tr, bot))
