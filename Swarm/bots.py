@@ -348,7 +348,7 @@ class RangedBot(Bot):
         self.speed = 2
         self.color = Colors.RANGED
         self.fov = 10
-        self.range = 7
+        self.range = 8
         self.mothership_range = 8
 
 
