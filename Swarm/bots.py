@@ -117,6 +117,7 @@ class Bot(object):
         self.on_bottom = None
         self.range = 1
         self.is_dead = False
+        self.last_move = (-1, -1)
 
         self.target = None
         self.attacks = True
@@ -154,6 +155,15 @@ class Bot(object):
             if tr <= self.fov:
                 self.field_of_view.append((tr, bot))
 
+    def _move(self, x_same, y_same, nx, ny):
+        if self.arena.grid[nx][ny] is None:
+            self.arena.move_bot(nx, ny, self)
+        else:
+            if x_same and not self.arena.move_bot(nx + 1, ny, self):
+                self.arena.move_bot(nx - 1, ny, self)
+            elif y_same and not self.arena.move_bot(nx, ny + 1, self):
+                self.arena.move_bot(nx, ny - 1, self)
+
     def move_towards(self, target):
         tx, ty = target.grid_x, target.grid_y
         x, y = nx, ny = self.grid_x, self.grid_y
@@ -167,7 +177,7 @@ class Bot(object):
         elif ty < y:
             ny = y - 1
 
-        self.arena.move_bot(nx, ny, self)
+        self._move(tx == x, ty == y, nx, ny)
 
     def move_away(self, target):
         tx, ty = target.grid_x, target.grid_y
@@ -215,6 +225,31 @@ class Bot(object):
         return self.target_range(target) <= self.range
 
     def rmove(self):
+        x, y = self.random_coordinates()
+        sc = self.surrounding_coordinates()
+        random.shuffle(sc)
+        move = (*sc.pop(), self)
+        self.arena.move_bot(*move)
+
+    def surrounding_coordinates(self):
+        x, y = self.grid_x, self.grid_y
+        xl = self.grid_x - 1
+        xh = self.grid_x + 1
+        yl = self.grid_y - 1
+        yh = self.grid_y + 1
+
+        up = x, y - 1
+        down = x, y + 1
+        left = x - 1, y
+        right = x + 1, y
+        up_right = x + 1, y - 1
+        up_left = x - 1, y - 1
+        down_right = x + 1, y + 1
+        down_left = x - 1, y + 1
+
+        return [up, down, left, right, up_left, up_right]
+
+    def random_coordinates(self):
         rxl = self.grid_x - 1
         rxh = self.grid_x + 1
         yxl = self.grid_y - 1
@@ -222,7 +257,7 @@ class Bot(object):
 
         x = random.randint(rxl, rxh)
         y = random.randint(yxl, yxh)
-        self.arena.move_bot(x, y, self)
+        return x, y
 
     def x_out_of_bounds(self, x):
         return x < 1 or x > Display.grid_x
@@ -295,7 +330,7 @@ class Bot(object):
                         self.swarm.bots.append(bot)
                         # self.arena.remove_bot(bot)
                 self.target.swarm.bots.clear()
-                del self.arena.swarms[self.target.swarm.name]
+                self.arena.remove_swarms()
                 self.arena.remove_bot(self.target)
                 return self
 
@@ -349,7 +384,7 @@ class RangedBot(Bot):
         self.color = Colors.RANGED
         self.fov = 10
         self.range = 10
-        self.mothership_range = 5
+        self.mothership_range = 4
 
 
 class RepairBot(Bot):

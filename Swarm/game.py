@@ -24,6 +24,11 @@ class Colors(object):
     KAMIKAZE = (173, 163, 34)   # Yellow
 
 
+class ShipRoles(object):
+    player_roles = []
+    enemy_roles = []
+
+
 class Settings(object):
     bot_size = 10, 10
     display_size = 1840, 1000
@@ -37,19 +42,40 @@ class Display(object):
     grid_y = grid_size[1]
 
 
+class Game(object):
+    arena = None
+    roles = ShipRoles
+    colors = Colors
+    settings = Settings
+    display = Display
+    objects = {}
+
+
 class Arena(object):
     bots = []
     swarms = {}
     display = Display
+    game = None
 
     def __init__(self):
         self.bots = []
         self.supplies = []
         self.swarms = {}
         self.display = Display
+        self.game = Game
         d = self.display
         self.grid = {i: {x: None for x in range(1, d.grid_size[1]+1)} for i in range(1, d.grid_size[0]+1)}
         self.supply_drop = None
+
+    def spawn_swarms(self, amount):
+        for i in range(amount):
+            s = Game.objects['Swarm'](name='Enemy {}'.format(i))
+            m = Game.objects['MotherShipBot'](self)
+            s.mothership = m
+            s.add_bot(m)
+            for _ in range(1, 11):
+                s.add_bot(random.choice(ShipRoles.enemy_roles)(self))
+            self.place_swarm(s)
 
     def drop_supplies(self, bot):
         if bot.hp > 0:
@@ -69,10 +95,12 @@ class Arena(object):
     def remove_swarms(self):
         dels = []
         for swarm_name, swarm in self.swarms.items():
-            if not swarm.bots:
+            if not swarm.bots and swarm != self.swarms['Player 1']:
                 dels.append(swarm_name)
         for d in dels:
             del self.swarms[d]
+        while len(self.swarms.keys()) < 3:
+            self.spawn_swarms(1)
 
     def remove_bot(self, bot):
         self.grid[bot.grid_x][bot.grid_y] = None
@@ -105,24 +133,32 @@ class Arena(object):
         hy = y + proximity if py else y
         new_x = random.randint(lx, hx)
         new_y = random.randint(ly, hy)
+
+        if Display.grid_x - new_x < 15:
+            new_x -= 15
+        if Display.grid_y - new_y < 15:
+            new_y -= 15
+        if new_x < 15:
+            new_x += 15
+        if new_y < 15:
+            new_y += 15
+
         return new_x, new_y
 
     def place_swarm(self, swarm):
         x, y = swarm.spawn_point
 
         while any([bot for bot in swarm.bots if bot.grid_x is None]):
-            f = 1
-            new_x, new_y = x, y
+            rspawn = (random.randint(1, Display.grid_x), random.randint(1, Display.grid_y))
+            swarm.mothership.grid_x, swarm.mothership.grid_y = rspawn
+            swarm.spawn_point = rspawn
             for bot in swarm.bots:
-                while not self.move_bot(new_x, new_y, bot):
-                    px = random.randint(0, 1)
-                    py = random.randint(0, 1)
-                    lx = x - 10 if not px else x
-                    hx = x + 10 if px else x
-                    ly = y - 10 if not py else y
-                    hy = y + 10 if py else y
-                    new_x = random.randint(lx, hx)
-                    new_y = random.randint(ly, hy)
+                bot.grid_x, bot.grid_y = swarm.mothership.grid_x, swarm.mothership.grid_y
+                swarm.mothership.rmove()
+                bot.rmove()
+                # new_x, new_y = self.get_random_location(swarm.mothership)
+                # while not self.move_bot(new_x, new_y, bot):
+                #     new_x, new_y = self.get_random_location(swarm.mothership)
 
                 if bot not in self.bots:
                     self.bots.append(bot)

@@ -5,7 +5,7 @@ import pygame
 
 from bots import AttackBot, DefenseBot, RangedBot, RepairBot
 from bots import BuilderBot, KamikazeBot, Swarm, MotherShipBot, Supplies
-from game import Display, Settings, Arena, Colors
+from game import Display, Settings, Arena, Colors, ShipRoles, Game
 from sim import Queue, QueueControl, ClockControl
 
 
@@ -16,15 +16,22 @@ class Threads(object):
 def setup():
     q1 = Queue()
     QueueControl.queues.append(q1)
-
     Settings.bot_size = 10, 10
     Display.size = Settings.display_size
     BOT_SIZE = Settings.bot_size
     arena = Arena()
+    arena.game = Game
+    arena.display = Display
     arena.supply_drop = Supplies
     roles = [AttackBot, DefenseBot, RangedBot, RepairBot, BuilderBot, KamikazeBot]
     enemy_roles = [AttackBot, DefenseBot, RangedBot, KamikazeBot]
 
+    Game.arena = arena
+    Game.objects['Swarm'] = Swarm
+    Game.objects['MotherShipBot'] = MotherShipBot
+
+    ShipRoles.player_roles = roles
+    ShipRoles.enemy_roles = enemy_roles
     player_swarm = Swarm(name='Player 1')
     for i in range(15):
         player_swarm.add_bot(random.choice(roles)(arena))
@@ -153,7 +160,8 @@ def main(clock, screen, pygame, arena, done):
                 arena.remove_bot(bot)
                 if bot.swarm != 'Supplies':
                     bot.swarm.remove(bot)
-                del bot
+                if bot != pm:
+                    del bot
                 continue
             bot.detect()
             if bot.target:
