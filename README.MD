@@ -11,6 +11,13 @@ Swarm is a strategy rouge-like space simulator game written with `pygame/python3
 
 It's probably best to just download the archive and run the game as it's not set up as a library or anything like that.
 
+### Controls
+
+Use the `w` `a` `s` and `d` keys or the directional keys to move your mothership around.
+
+Use the `tab` key to enable auto-move.  It will automatically move your mothership towards
+it's closest target.
+
 ### Instructions
 
 The player controls the mothership (white) in the fleet of circles (squares are enemies).  All ships in a fleet follow the mothership.  The different colors tell you what kind of ship the circle/square represents.  Different ships have different abilities, attack ranges, health pools, speeds, etc.  Even ships of the same type have somewhat randomized stats.
