@@ -323,9 +323,15 @@ class Bot(object):
         self.target.hp -= dmg
         if self.target.hp <= 0:
             self.target.destroy()
+
+            # Take stats from target and give it to attacker's mothership
+            # todo: Fix so that things are
             if isinstance(self.target, MotherShipBot):
                 ms = self.swarm.mothership
-                ms.fov += self.target.fov
+                if ms.fov < 100:
+                    ms.fov += int(self.target.fov * 0.15)
+                    if ms.fov > 100:
+                        ms.fov = 100
                 ms.health += int(self.target.health * 0.10)
                 ms.atk = ms.atk[0] + self.target.atk[0], ms.atk[1] + self.target.atk[1]
                 if self.target.swarm.bots:
