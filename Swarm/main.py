@@ -35,7 +35,7 @@ def setup():
         m = MotherShipBot(arena)
         s.mothership = m
         s.add_bot(m)
-        for _ in range(1, 10):
+        for _ in range(1, 11):
             s.add_bot(random.choice(roles)(arena))
         arena.place_swarm(s)
 
