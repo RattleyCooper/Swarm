@@ -5,7 +5,8 @@ Swarm is a strategy rouge-like space simulator game written with `pygame/python3
 ![](example_gameplay.gif)
 
 ### Install
-
+    
+    pip3 install pygame
     pip3 install Swarm
 
 ### Instructions
