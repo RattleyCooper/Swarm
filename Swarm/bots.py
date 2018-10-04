@@ -214,6 +214,15 @@ class Bot(object):
                 self.move_towards(ms.target)
                 return
 
+        # Move mothership towards closest repair bot if health drops below 0.20 percent.
+        if self == ms:
+            if self.hp < self.health * 0.20:
+                repair_ships = [ship for ship in self.field_of_view if isinstance(ship, RepairBot) and ship.swarm == self.swarm]
+                if repair_ships:
+                    ship = min(repair_ships)[1]
+                    self.move_towards(ship)
+                    return
+
         # If there is a target and it is out of range, move towards it
         if self.target and not self.in_range(self.target):
             if self.target.is_dead:
