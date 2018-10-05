@@ -43,6 +43,9 @@ class Swarm(object):
         return self
 
     def detect(self):
+        if self.mothership:
+            if self.mothership.grid_x and self.mothership.grid_y:
+                self.grid_x, self.grid_y = self.mothership.grid_x, self.mothership.grid_y
         self._swarm_update_fov()
 
     def add_bots(self, bots):
