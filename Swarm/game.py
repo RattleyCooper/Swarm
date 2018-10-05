@@ -34,7 +34,7 @@ class ShipRoles(object):
 
 class Settings(object):
     bot_size = 10, 10
-    display_size = 600, 600  # 1840, 1000
+    display_size = 1000, 600
 
 
 class Display(object):
@@ -73,19 +73,18 @@ class Arena(object):
     def remove_dead(self):
         self.bots = set(bot for bot in self.bots if not bot.is_dead)
 
-    def spawn_swarms(self, amount):
-        for i in range(amount):
-            now = datetime.now()
-            now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
-            s = Game.objects['Swarm'](name='Enemy {}'.format(md5(bytearray(str(now).encode('utf-8'))).hexdigest()), arena=self)
-            m = Game.objects['MotherShipBot'](self)
-            s.mothership = m
-            s.add_bot(m)
-            for _ in range(1, 11):
-                ship = random.choice(ShipRoles.enemy_roles)(self)
-                s.add_bot(ship)
-                self.bots.add(ship)
-            self.place_swarm(s)
+    def spawn_swarm(self):
+        now = datetime.now()
+        now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
+        s = Game.objects['Swarm'](name='Enemy {}'.format(md5(bytearray(str(now).encode('utf-8'))).hexdigest()), arena=self)
+        m = Game.objects['MotherShipBot'](self)
+        s.mothership = m
+        s.add_bot(m)
+        for _ in range(1, 11):
+            ship = random.choice(ShipRoles.enemy_roles)(self)
+            s.add_bot(ship)
+            self.bots.add(ship)
+        self.place_swarm(s)
 
     def drop_supplies(self, bot):
         if bot.hp > 0:
@@ -111,8 +110,8 @@ class Arena(object):
                 dels.append(swarm_name)
         for d in dels:
             del self.swarms[d]
-        while len(self.swarms.keys()) < 3:
-            self.spawn_swarms(1)
+        if len(self.swarms.keys()) < 4:
+            self.spawn_swarm()
 
     def remove_bot(self, bot):
         self.grid[bot.grid_x][bot.grid_y] = None
@@ -183,19 +182,14 @@ class Arena(object):
         # # self.bots.add(swarm.mothership)
         m = swarm.mothership
         swarm.detect()
-
-
-
-        mx, my = m.grid_x, m.grid_y = swarm.spawn_points.pop()
+        mx, my = m.grid_x, m.grid_y = next(swarm.spawn_points)
         self.add_bot(mx, my, m)
         # while any([bot for bot in swarm.bots if bot.grid_x is None]):
         for bot in swarm.bots:
             if bot == m:
                 continue
-
-            swarm.detect()
             # random.shuffle(m.spawn_points)
-            x, y = bot.grid_x, bot.grid_y = swarm.spawn_points.pop()
+            x, y = bot.grid_x, bot.grid_y = next(swarm.spawn_points)
 
             # bot.grid_x, bot.grid_y = m.grid_x, m.grid_y
             # m.move()

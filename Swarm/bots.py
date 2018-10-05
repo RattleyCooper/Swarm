@@ -23,10 +23,11 @@ class Swarm(object):
         self.target = None
         self.mothership = None
         self.spawn_points = set()
-        self.half_fov = 8
+        self.half_fov = 4
         self.supplies = 0
         self.detect()
-        while len(self.spawn_points) < 20:
+
+        while len(list(self.spawn_points)) < 20:
             self._make_spawn()
 
     def _make_spawn(self):
@@ -34,15 +35,15 @@ class Swarm(object):
         self.grid_x, self.grid_y = self.spawn_point
         self.detect()
 
-    def _update_fov(self):
-        half_fov = self.half_fov * 2
+    def _swarm_update_fov(self):
+        half_fov = self.half_fov
         grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
         grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
-        self.spawn_points = set((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
+        self.spawn_points = ((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
         return self
 
     def detect(self):
-        self._update_fov()
+        self._swarm_update_fov()
 
     def add_bots(self, bots):
         for bot in bots:
@@ -159,7 +160,6 @@ class Bot(object):
         self.half_fov = self.fov // 2
         self.field_of_view = set()
         self.proximity = set()
-        self.spawn_points = set()
 
         self._last_fov_update = 0
 
@@ -186,8 +186,8 @@ class Bot(object):
         grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
         grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
         potential_sightings = (self.arena.grid[gx][gy] for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is not None)
-        if isinstance(self, MotherShipBot):
-            self.spawn_points = set((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
+        #if isinstance(self, MotherShipBot):
+        #    self.spawn_points = ((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
         for bot in potential_sightings:
             if bot.is_dead:
                 continue
@@ -201,12 +201,12 @@ class Bot(object):
 
     def _move(self, x_same, y_same, nx, ny):
         if self.arena.grid[nx][ny] is None:
-            self.arena.move_bot(nx, ny, self)
+            return self.arena.move_bot(nx, ny, self)
         else:
             if x_same and not self.arena.move_bot(nx + 1, ny, self):
-                self.arena.move_bot(nx - 1, ny, self)
+                return self.arena.move_bot(nx - 1, ny, self)
             elif y_same and not self.arena.move_bot(nx, ny + 1, self):
-                self.arena.move_bot(nx, ny - 1, self)
+                return self.arena.move_bot(nx, ny - 1, self)
 
     def move_towards(self, target):
         tx, ty = target.grid_x, target.grid_y
@@ -222,7 +222,7 @@ class Bot(object):
             ny = y - 1
 
         #self._move(tx == x, ty == y, nx, ny)
-        self.arena.move_bot(nx, ny, self)
+        return self.arena.move_bot(nx, ny, self)
 
     def move_away(self, target):
         tx, ty = target.grid_x, target.grid_y
@@ -237,7 +237,7 @@ class Bot(object):
         elif ty > y:
             ny = y - 1
 
-        self.arena.move_bot(nx, ny, self)
+        return self.arena.move_bot(nx, ny, self)
 
     def move(self):
         # todo: if mothership is low on health and a repair ship exists, move towards that.
@@ -246,14 +246,14 @@ class Bot(object):
         if ms and self != ms:
             tr = self.target_range(ms)
             if tr > self.mothership_range:
-                self.move_towards(ms)
-                return
+                if self.move_towards(ms):
+                    return True
             if tr <= self.mothership_proximity:
-                self.move_away(ms)
-                return
+                if self.move_away(ms):
+                    return True
             if ms.target and ms.target.grid_x and ms.target.grid_y and self.attacks and ms.target not in self.proximity:
-                self.move_towards(ms.target)
-                return
+                if self.move_towards(ms.target):
+                    return True
 
         # Move mothership towards closest repair bot if health drops below 0.20 percent.
         if self == ms:
@@ -261,19 +261,19 @@ class Bot(object):
                 repair_ships = set(ship for ship in self.proximity if isinstance(ship, RepairBot) and ship.swarm == self.swarm)
                 if repair_ships:
                     ship = min(repair_ships)
-                    self.move_towards(ship)
-                    return
+                    if self.move_towards(ship):
+                        return True
 
         # If there is a target and it is out of range, move towards it
         if self.target and not self.in_range(self.target):
             if self.target.is_dead:
                 self.target = None
-                self.rmove()
-                return
-            self.move_towards(self.target)
-            return
+                if self.rmove():
+                    return True
+            if self.target and self.move_towards(self.target):
+                return True
 
-        self.rmove()
+        return self.rmove()
 
     def in_range(self, target):
         return self.target_range(target) <= self.range
@@ -284,8 +284,7 @@ class Bot(object):
         sc = self.surrounding_coordinates()
         random.shuffle(sc)
         move = (*sc.pop(), self)
-        self.arena.move_bot(*move)
-        # self.swarm.spawn()
+        return self.arena.move_bot(*move)
 
     def surrounding_coordinates(self):
         x, y = self.grid_x, self.grid_y
@@ -485,15 +484,18 @@ class RepairBot(Bot):
         ms = self.swarm.mothership
         if ms:
             if self.target_range(ms) > self.mothership_range:
-                return self.move_towards(ms)
+                if self.move_towards(ms):
+                    return
 
         if self.target:
             if self.target_range(self.target) > (self.range - 2):
-                return self.move_towards(self.target)
+                if self.move_towards(self.target):
+                    return
 
         # If there is a target and it is out of range, move towards it
         if self.target and not self.in_range(self.target):
-            self.move_towards(self.target)
+            if self.move_towards(self.target):
+                return
         else:
             self.rmove()
 
@@ -574,7 +576,10 @@ class BuilderBot(Bot):
         if len(self.swarm.bots) >= 35:
             return False
 
-        self.swarm._update_fov()
+        self.swarm.detect()
+        if not self.swarm.spawn_points:
+            return False
+
         self.swarm.supplies -= 500
         roles = [AttackBot, DefenseBot, RangedBot, RepairBot, BuilderBot, KamikazeBot]
         bot = random.choice(roles)(self.arena)

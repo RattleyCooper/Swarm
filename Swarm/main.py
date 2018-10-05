@@ -37,7 +37,7 @@ def setup():
     for i in range(15):
         player_swarm.add_bot(random.choice(roles)(arena))
 
-    for i in range(1, 2):
+    for i in range(1, 11):
         now = datetime.now()
         now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
         s = Swarm(name='Enemy {}'.format(md5(bytearray(str(now).encode('utf-8'))).hexdigest()), arena=arena)
@@ -199,7 +199,9 @@ def main(clock, screen, pygame, arena, done):
 
         now = datetime.now()
         now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
-        if now[2] % 5 == 0 and last != now:
+        if now[2] % 10 == 0 and last != now:
+            # todo: get rid of .remove_swarms and change it so that it is only responsible for spawning swarms.
+            # removing swarms should be done when the last ship in a swarm is destroyed.
             arena.remove_swarms()
             last = now
             # print('Removing Dead Swarms...')
