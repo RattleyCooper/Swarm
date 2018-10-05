@@ -240,8 +240,6 @@ class Bot(object):
         return self.arena.move_bot(nx, ny, self)
 
     def move(self):
-        # todo: if mothership is low on health and a repair ship exists, move towards that.
-
         ms = self.swarm.mothership
         if ms and self != ms:
             tr = self.target_range(ms)
@@ -581,6 +579,9 @@ class BuilderBot(Bot):
         self.swarm.detect()
         if not self.swarm.spawn_points:
             return False
+
+        # todo: Limit the amount of each bot type for building. That way the swarm does not end up
+        # with 15 builder ships or 15 repair ships.
 
         self.swarm.supplies -= 500
         roles = [AttackBot, DefenseBot, RangedBot, RepairBot, BuilderBot, KamikazeBot]
