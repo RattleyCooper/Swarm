@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Swarm",
-    version="0.0.2",
+    version="0.0.3",
     author="py-am-i",
     author_email="duckpuncherirl@gmail.com",
     description="Swarm is a strategy rouge-like space simulator game written with `pygame/python3`.",
@@ -17,7 +17,7 @@ setuptools.setup(
         'pygame'
     ],
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
