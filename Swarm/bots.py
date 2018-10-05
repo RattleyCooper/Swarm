@@ -604,24 +604,24 @@ class KamikazeBot(Bot):
         self.range = 1
         self.fov = 10
         self.half_fov = self.fov // 2
-        self.mothership_range = 10
+        self.mothership_range = 6
         self.attacks = False
 
     def _get_dmg(self):
         return self.damage * random.randint(*self.atk) - (random.randint(*self.target.defense) * 0.25)
 
     def attack(self):
-        if not self.target or self.target_range(self.target) > self.range:
-            return False
-
-        dmg = self._get_dmg()
-        self.target.hp -= dmg
-        if self.target.hp <= 0:
-            self.target.destroy()
-
-        for rng, bot in self.in_fov():
-            if bot.swarm != self.swarm and bot.swarm != 'Supplies' and rng <= self.range:
-                bot.hp -= self._get_dmg()
-                if bot.hp <= 0:
-                    bot.destroy()
+        # if not self.target or self.target_range(self.target) > self.range:
+        #     return False
+        # dmg = self._get_dmg()
+        # self.target.hp -= dmg
+        # if self.target.hp <= 0:
+        #     self.target.destroy()
+        # for rng, bot in self.in_fov():
+        #     if bot.swarm != self.swarm and bot.swarm != 'Supplies' and rng <= self.range:
+        #         bot.hp -= self._get_dmg()
+        #         if bot.hp <= 0:
+        #             bot.destroy()
+        #
+        Bot.destroy(self)
         self.destroy()
