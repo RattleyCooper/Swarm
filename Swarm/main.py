@@ -185,14 +185,17 @@ def main(clock, screen, pygame, arena, done):
                     arena.bots.remove(obj)
                 continue
 
-            if obj.target:
-                pygame.draw.line(screen, obj.color, [obj.grid_x*10, obj.grid_y*10], [obj.target.grid_x*10, obj.target.grid_y*10], 1)
             if isinstance(obj.swarm, Swarm) and obj.swarm.name == 'Player 1':
                 e = pygame.draw.ellipse(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
             elif isinstance(obj, Supplies):
                 e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
             else:
                 e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+
+            if obj.target:
+                lx = [obj.grid_x*10 + Display.bot_hsize[0], obj.grid_y*10 + Display.bot_hsize[1]]
+                ly = [obj.target.grid_x*10 + Display.bot_hsize[0], obj.target.grid_y*10 + Display.bot_hsize[1]]
+                pygame.draw.line(screen, obj.color, lx, ly, 1)
 
             if isinstance(obj, MotherShipBot) and obj.swarm == player_swarm:
                 if moving:
