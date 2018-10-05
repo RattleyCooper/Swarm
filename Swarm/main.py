@@ -1,12 +1,13 @@
 import random
 from datetime import datetime
+from hashlib import md5
 
 import pygame
 
 from bots import AttackBot, DefenseBot, RangedBot, RepairBot
 from bots import BuilderBot, KamikazeBot, Swarm, MotherShipBot, Supplies
 from game import Display, Settings, Arena, Colors, ShipRoles, Game
-from sim import Queue, QueueControl, ClockControl
+from sim import Queue, QueueControl, ClockControl, Clock
 
 
 class Threads(object):
@@ -24,7 +25,7 @@ def setup():
     arena.display = Display
     arena.supply_drop = Supplies
     roles = [AttackBot, DefenseBot, RangedBot, RepairBot, BuilderBot, KamikazeBot]
-    enemy_roles = [AttackBot, DefenseBot, RangedBot, KamikazeBot]
+    enemy_roles = [AttackBot, DefenseBot, RangedBot, KamikazeBot, BuilderBot]
 
     Game.arena = arena
     Game.objects['Swarm'] = Swarm
@@ -32,15 +33,18 @@ def setup():
 
     ShipRoles.player_roles = roles
     ShipRoles.enemy_roles = enemy_roles
-    player_swarm = Swarm(name='Player 1')
+    player_swarm = Swarm(name='Player 1', arena=arena)
     for i in range(15):
         player_swarm.add_bot(random.choice(roles)(arena))
 
-    for i in range(1, 11):
-        s = Swarm(name='Enemy {}'.format(i))
+    for i in range(1, 2):
+        now = datetime.now()
+        now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
+        s = Swarm(name='Enemy {}'.format(md5(bytearray(str(now).encode('utf-8'))).hexdigest()), arena=arena)
         m = MotherShipBot(arena)
         s.mothership = m
         s.add_bot(m)
+        s.arena = arena
         for _ in range(1, 11):
             s.add_bot(random.choice(roles)(arena))
         arena.place_swarm(s)
@@ -97,6 +101,8 @@ def govern_speed(x, y, bot, count):
 
 def process_move(event, player_mothership, count, auto_move=False):
     pm = player_mothership
+    if pm.is_dead:
+        return False
     if event.key == 273 or event.key == 119:  # UP OR W
         govern_speed(pm.grid_x, pm.grid_y - 1, pm, count)
     elif event.key == 276 or event.key == 97:  # LEFT OR A
@@ -153,36 +159,46 @@ def main(clock, screen, pygame, arena, done):
         screen.fill(Colors.BLACK)
 
         # --- Drawing code should go here
-        all_bots = arena.all_bots() + arena.supplies
+        all_objects = arena.all_bots().copy()
+        all_objects.update(arena.supplies)
 
-        for bot in all_bots:
-            if bot.is_dead:
-                arena.remove_bot(bot)
-                if bot.swarm != 'Supplies':
-                    bot.swarm.remove(bot)
-                if bot != pm:
-                    del bot
+        for obj in all_objects:
+            if obj.is_dead:
+                if obj.swarm != 'Supplies':
+                    obj.swarm.remove(obj)
+                    if obj != pm:
+                        del obj
                 continue
-            bot.detect()
-            if bot.target:
-                pygame.draw.line(screen, bot.color, [bot.grid_x*10, bot.grid_y*10], [bot.target.grid_x*10, bot.target.grid_y*10], 1)
-            if isinstance(bot.swarm, Swarm) and bot.swarm.name == 'Player 1':
-                e = pygame.draw.ellipse(screen, bot.color, [bot.grid_x * BOT_SIZE[0], bot.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
-            elif isinstance(bot, Supplies):
-                e = pygame.draw.rect(screen, bot.color, [bot.grid_x * BOT_SIZE[0], bot.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
-            else:
-                e = pygame.draw.rect(screen, bot.color, [bot.grid_x * BOT_SIZE[0], bot.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
 
-            if isinstance(bot, MotherShipBot) and bot.swarm == player_swarm:
+            obj.detect()
+
+            # if the grid does not contain the bot at the current location then
+            if arena.grid[obj.grid_x][obj.grid_y] != obj:
+                if isinstance(obj, Supplies):
+                    arena.supplies.remove(obj)
+                else:
+                    arena.bots.remove(obj)
+                continue
+
+            if obj.target:
+                pygame.draw.line(screen, obj.color, [obj.grid_x*10, obj.grid_y*10], [obj.target.grid_x*10, obj.target.grid_y*10], 1)
+            if isinstance(obj.swarm, Swarm) and obj.swarm.name == 'Player 1':
+                e = pygame.draw.ellipse(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+            elif isinstance(obj, Supplies):
+                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+            else:
+                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+
+            if isinstance(obj, MotherShipBot) and obj.swarm == player_swarm:
                 if moving:
                     process_move(moving, pm, count)
                 elif auto_move:
-                    draw_callback(bot, count)
+                    draw_callback(obj, count)
             else:
-                draw_callback(bot, count)
+                draw_callback(obj, count)
 
         now = datetime.now()
-        now = (now.hour, now.minute, now.second)
+        now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
         if now[2] % 5 == 0 and last != now:
             arena.remove_swarms()
             last = now

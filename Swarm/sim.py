@@ -8,22 +8,7 @@ class ClockControl(object):
 
 
 class Clock(object):
-    def __init__(self):
-        self.last = (0, 0, 0)
-        now = datetime.now()
-        self.now = (now.hour, now.minute, now.second)
-        self.confirmed = False
-
-    def _set(self):
-        now = datetime.now()
-        self.now = (now.hour, now.minute, now.second)
-
-    def start(self):
-        while not ClockControl.shutdown:
-            self._set()
-            if self.last != self.now and not self.confirmed:
-                self.last = self.now
-                self.confirmed = True
+    now = (-1, -1, -1)
 
 
 class QueueControl(object):

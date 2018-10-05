@@ -1,4 +1,7 @@
 import random
+from datetime import datetime
+from hashlib import md5
+from sim import Clock
 
 
 class GamePiece(object):
@@ -31,7 +34,7 @@ class ShipRoles(object):
 
 class Settings(object):
     bot_size = 10, 10
-    display_size = 1840, 1000
+    display_size = 600, 600  # 1840, 1000
 
 
 class Display(object):
@@ -52,14 +55,14 @@ class Game(object):
 
 
 class Arena(object):
-    bots = []
+    bots = set()
     swarms = {}
     display = Display
     game = None
 
     def __init__(self):
-        self.bots = []
-        self.supplies = []
+        self.bots = set()
+        self.supplies = set()
         self.swarms = {}
         self.display = Display
         self.game = Game
@@ -67,14 +70,21 @@ class Arena(object):
         self.grid = {i: {x: None for x in range(1, d.grid_size[1]+1)} for i in range(1, d.grid_size[0]+1)}
         self.supply_drop = None
 
+    def remove_dead(self):
+        self.bots = set(bot for bot in self.bots if not bot.is_dead)
+
     def spawn_swarms(self, amount):
         for i in range(amount):
-            s = Game.objects['Swarm'](name='Enemy {}'.format(i))
+            now = datetime.now()
+            now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
+            s = Game.objects['Swarm'](name='Enemy {}'.format(md5(bytearray(str(now).encode('utf-8'))).hexdigest()), arena=self)
             m = Game.objects['MotherShipBot'](self)
             s.mothership = m
             s.add_bot(m)
             for _ in range(1, 11):
-                s.add_bot(random.choice(ShipRoles.enemy_roles)(self))
+                ship = random.choice(ShipRoles.enemy_roles)(self)
+                s.add_bot(ship)
+                self.bots.add(ship)
             self.place_swarm(s)
 
     def drop_supplies(self, bot):
@@ -83,19 +93,21 @@ class Arena(object):
         sd = self.supply_drop(x=bot.grid_x, y=bot.grid_y)
         sd.arena = self
         self.grid[bot.grid_x][bot.grid_y] = sd
-        self.supplies.append(sd)
+        self.supplies.add(sd)
         return self
 
     def remove_supplies(self, supplies):
         self.grid[supplies.grid_x][supplies.grid_y] = None
-        if supplies in self.supplies:
+        try:
             self.supplies.remove(supplies)
+        except KeyError:
+            pass
         return self
 
     def remove_swarms(self):
         dels = []
         for swarm_name, swarm in self.swarms.items():
-            if not swarm.bots and swarm != self.swarms['Player 1']:
+            if not swarm.bots and swarm:  # != self.swarms['Player 1']:
                 dels.append(swarm_name)
         for d in dels:
             del self.swarms[d]
@@ -104,9 +116,11 @@ class Arena(object):
 
     def remove_bot(self, bot):
         self.grid[bot.grid_x][bot.grid_y] = None
+        if bot in bot.swarm.bots:
+            bot.swarm.remove(bot)
         try:
             self.bots.remove(bot)
-        except ValueError:
+        except KeyError:
             pass
         return self
 
@@ -117,10 +131,20 @@ class Arena(object):
         return self.bots
 
     def add_bot(self, x, y, bot):
+        """
+        Add a bot to the arena.  Make sure you move whatever is in the grid before adding it or it will
+        overwrite whatever is in the x/y on the grid.
+
+        :param x:
+        :param y:
+        :param bot:
+        :return:
+        """
+
         self.grid[x][y] = bot
-        self.bots.append(bot)
-        while not self.move_bot(x, y, bot):
-            x, y = self.get_random_location(bot)
+        self.bots.add(bot)
+        # while not self.move_bot(x, y, bot):
+        #    x, y = self.get_random_location(bot)
         return bot
 
     def get_random_location(self, target, proximity=10):
@@ -134,34 +158,62 @@ class Arena(object):
         new_x = random.randint(lx, hx)
         new_y = random.randint(ly, hy)
 
-        if Display.grid_x - new_x < 15:
-            new_x -= 15
-        if Display.grid_y - new_y < 15:
-            new_y -= 15
-        if new_x < 15:
-            new_x += 15
-        if new_y < 15:
-            new_y += 15
+        if new_x <= 0:
+            new_x = random.randint(1, proximity)
+        elif new_x >= Display.grid_x:
+            new_x = random.randint(Display.grid_x - proximity, Display.grid_x)
+        if new_y <= 0:
+            new_y = random.randint(1, proximity)
+        elif new_y == Display.grid_y:
+            new_y = random.randint(Display.grid_y - proximity, Display.grid_y)
 
         return new_x, new_y
 
     def place_swarm(self, swarm):
+        if not swarm.arena:
+            swarm.arena = self
+
         x, y = swarm.spawn_point
 
-        while any([bot for bot in swarm.bots if bot.grid_x is None]):
-            rspawn = (random.randint(1, Display.grid_x), random.randint(1, Display.grid_y))
-            swarm.mothership.grid_x, swarm.mothership.grid_y = rspawn
-            swarm.spawn_point = rspawn
-            for bot in swarm.bots:
-                bot.grid_x, bot.grid_y = swarm.mothership.grid_x, swarm.mothership.grid_y
-                swarm.mothership.rmove()
-                bot.rmove()
-                # new_x, new_y = self.get_random_location(swarm.mothership)
-                # while not self.move_bot(new_x, new_y, bot):
-                #     new_x, new_y = self.get_random_location(swarm.mothership)
+        # while swarm.mothership.grid_y is None or swarm.mothership.grid_x is None:
+        #     rspawn = (random.randint(1, Display.grid_x), random.randint(1, Display.grid_y))
+        #     if self.grid[rspawn[0]][rspawn[1]] is None:
+        #         swarm.mothership.grid_x, swarm.mothership.grid_y = rspawn
+        #         swarm.spawn_point = rspawn
+        # # self.bots.add(swarm.mothership)
+        m = swarm.mothership
+        swarm.detect()
 
-                if bot not in self.bots:
-                    self.bots.append(bot)
+
+
+        mx, my = m.grid_x, m.grid_y = swarm.spawn_points.pop()
+        self.add_bot(mx, my, m)
+        # while any([bot for bot in swarm.bots if bot.grid_x is None]):
+        for bot in swarm.bots:
+            if bot == m:
+                continue
+
+            swarm.detect()
+            # random.shuffle(m.spawn_points)
+            x, y = bot.grid_x, bot.grid_y = swarm.spawn_points.pop()
+
+            # bot.grid_x, bot.grid_y = m.grid_x, m.grid_y
+            # m.move()
+            self.add_bot(x, y, bot)
+            #new_x, new_y = self.get_random_location(swarm.mothership)
+            # bot.rmove()
+            # new_x, new_y = self.get_random_location(swarm.mothership)
+            # p = 10
+            # moved = False
+            # while not moved:
+            #     moved = self.move_bot(new_x, new_y, bot)
+            #     new_x, new_y = self.get_random_location(swarm.mothership, proximity=p)
+            #     p += 1
+            #     if p >= 15:
+            #        p = 10
+            # if bot not in self.bots:
+            #     self.bots.add(bot)
+
         self.swarms[swarm.name] = swarm
 
     def move_bot(self, x, y, bot):
@@ -181,10 +233,12 @@ class Arena(object):
         bot.grid_x = x
         bot.grid_y = y
         self.grid[x][y] = bot
-        bot.detect()
+        # bot.detect()
         return True
 
     def add_swarm(self, swarm):
         self.swarms[swarm.name] = swarm
-        self.bots += swarm.bots
+        self.bots.update(swarm.bots)
+        if not swarm.arena:
+            swarm.arena = self
 

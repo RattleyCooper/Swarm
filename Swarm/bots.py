@@ -8,40 +8,57 @@ except ImportError:
 
 
 class Swarm(object):
-    def __init__(self, name='', bots=None):
+    def __init__(self, name='', bots=None, arena=None):
         if not name:
             raise ValueError("A name must be given for the swarm.  Use the `name` kwarg to set the Swarm name.")
 
         self.name = name
-        self.bots = [] if bots is None else bots
+        self.bots = set() if bots is None else bots
         for bot in self.bots:
             bot.swarm = self
+        self.arena = arena
         self.groups = {1: [], 2: [], 3: [], 4: []}
         self.spawn_point = (random.randint(1, Display.grid_x), random.randint(1, Display.grid_y))
+        self.grid_x, self.grid_y = self.spawn_point
         self.target = None
         self.mothership = None
-
+        self.spawn_points = set()
+        self.half_fov = 8
         self.supplies = 0
+        self.detect()
+        while len(self.spawn_points) < 20:
+            self._make_spawn()
+
+    def _make_spawn(self):
+        self.spawn_point = (random.randint(1, Display.grid_x), random.randint(1, Display.grid_y))
+        self.grid_x, self.grid_y = self.spawn_point
+        self.detect()
+
+    def _update_fov(self):
+        half_fov = self.half_fov * 2
+        grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
+        grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
+        self.spawn_points = set((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
+        return self
 
     def detect(self):
-        for bot in self.bots:
-            bot.detect()
+        self._update_fov()
 
     def add_bots(self, bots):
         for bot in bots:
             bot.swarm = self
-        self.bots += bots
+        self.bots.update(bots)
         return self
 
     def add_bot(self, bot):
         bot.swarm = self
-        self.bots.append(bot)
+        self.bots.add(bot)
         return self
 
     def remove(self, bot):
         try:
             self.bots.remove(bot)
-        except ValueError:
+        except KeyError:
             pass
         return self
 
@@ -51,6 +68,13 @@ class Swarm(object):
             targets.append(bot.select_target())
         self.target = targets[targets.index(max(targets, key=targets.count))]
         return self
+
+    # def spawn(self):
+    #     spawnables = [s for s in self.bots if s.grid_x and s.grid_y and self.arena.grid[s.grid_x][s.grid_y] is None]
+    #     if spawnables:
+    #         ship = spawnables.pop()
+    #         x, y = ship.last_move
+    #         self.arena.move_bot(x, y, ship)
 
 
 class Supplies(object):
@@ -117,7 +141,7 @@ class Bot(object):
         self.on_bottom = None
         self.range = 1
         self.is_dead = False
-        self.last_move = (-1, -1)
+        self.last_move = (0, 0)
 
         self.target = None
         self.attacks = True
@@ -132,7 +156,10 @@ class Bot(object):
         self.speed = 1
 
         self.fov = 10
-        self.field_of_view = []
+        self.half_fov = self.fov // 2
+        self.field_of_view = set()
+        self.proximity = set()
+        self.spawn_points = set()
 
         self._last_fov_update = 0
 
@@ -149,15 +176,28 @@ class Bot(object):
         return other
 
     def _update_fov(self):
-        self.field_of_view = []
-        half_fov = self.fov // 2
+        fov_list = set()
+        proximity = set()
+
+        self.proximity.clear()
+        self.field_of_view.clear()
+
+        half_fov = self.half_fov
         grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
         grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
         potential_sightings = (self.arena.grid[gx][gy] for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is not None)
+        if isinstance(self, MotherShipBot):
+            self.spawn_points = set((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
         for bot in potential_sightings:
+            if bot.is_dead:
+                continue
             tr = self.target_range(bot)
             if tr <= self.fov:
-                self.field_of_view.append((tr, bot))
+                fov_list.add((tr, bot))
+                proximity.add(bot)
+
+        self.proximity.update(proximity)
+        self.field_of_view.update(fov_list)
 
     def _move(self, x_same, y_same, nx, ny):
         if self.arena.grid[nx][ny] is None:
@@ -181,7 +221,8 @@ class Bot(object):
         elif ty < y:
             ny = y - 1
 
-        self._move(tx == x, ty == y, nx, ny)
+        #self._move(tx == x, ty == y, nx, ny)
+        self.arena.move_bot(nx, ny, self)
 
     def move_away(self, target):
         tx, ty = target.grid_x, target.grid_y
@@ -210,16 +251,16 @@ class Bot(object):
             if tr <= self.mothership_proximity:
                 self.move_away(ms)
                 return
-            if ms.target and self.attacks and ms.target not in self.field_of_view:
+            if ms.target and ms.target.grid_x and ms.target.grid_y and self.attacks and ms.target not in self.proximity:
                 self.move_towards(ms.target)
                 return
 
         # Move mothership towards closest repair bot if health drops below 0.20 percent.
         if self == ms:
             if self.hp < self.health * 0.20:
-                repair_ships = [ship for ship in self.field_of_view if isinstance(ship, RepairBot) and ship.swarm == self.swarm]
+                repair_ships = set(ship for ship in self.proximity if isinstance(ship, RepairBot) and ship.swarm == self.swarm)
                 if repair_ships:
-                    ship = min(repair_ships)[1]
+                    ship = min(repair_ships)
                     self.move_towards(ship)
                     return
 
@@ -239,10 +280,12 @@ class Bot(object):
 
     def rmove(self):
         x, y = self.random_coordinates()
+        self.last_move = x, y
         sc = self.surrounding_coordinates()
         random.shuffle(sc)
         move = (*sc.pop(), self)
         self.arena.move_bot(*move)
+        # self.swarm.spawn()
 
     def surrounding_coordinates(self):
         x, y = self.grid_x, self.grid_y
@@ -287,6 +330,17 @@ class Bot(object):
 
         self._update_fov()
         self.select_target()
+        swarm = self.swarm
+        mothership = False
+        ms_target = False
+
+        if swarm and swarm.mothership:
+            mothership = swarm.mothership
+        if mothership and mothership.target:
+            ms_target = mothership.target
+
+        if ms_target and ms_target.is_dead:
+            self.swarm.mothership.target = None
         return self
 
     def drop_supplies(self):
@@ -294,20 +348,22 @@ class Bot(object):
         return self
 
     def destroy(self):
+        if self.is_dead:
+            return False
         self.is_dead = True
         self.arena.remove_bot(self)
-        try:
-            self.swarm.bots.remove(self)
-        except ValueError:
-            pass
         self.drop_supplies()
+        self.grid_x = None
+        self.grid_y = None
         return self
 
     def in_fov(self):
         return self.field_of_view
 
     def select_target(self):
-        enemies = [target for target in self.field_of_view if target[1].swarm != self.swarm and target[1].swarm != 'Supplies']
+        enemies = set(
+            target for target in self.field_of_view if not target[1].is_dead and target[1].swarm != self.swarm and target[1].swarm != 'Supplies'
+        )
         if enemies:
             enemy = min(enemies)[1]
             if enemy.is_dead:
@@ -332,7 +388,7 @@ class Bot(object):
         self.target.hp -= dmg
         if self.target.hp <= 0:
             self.target.destroy()
-
+            self.target.is_dead = True
             # Take stats from target and give it to attacker's mothership
             # todo: Fix so that things are
             if isinstance(self.target, MotherShipBot):
@@ -346,11 +402,11 @@ class Bot(object):
                 if self.target.swarm.bots:
                     for bot in self.target.swarm.bots:
                         bot.swarm = self.swarm
-                        self.swarm.bots.append(bot)
+                        self.swarm.bots.add(bot)
                         # self.arena.remove_bot(bot)
                 self.target.swarm.bots.clear()
                 self.arena.remove_swarms()
-                self.arena.remove_bot(self.target)
+                # self.arena.remove_bot(self.target)
                 return self
 
 
@@ -365,6 +421,7 @@ class MotherShipBot(Bot):
         self.color = Colors.WHITE
         self.range = 10
         self.fov = 50
+        self.half_fov = self.fov // 2
 
 
 class AttackBot(Bot):
@@ -377,6 +434,7 @@ class AttackBot(Bot):
         self.color = Colors.ATTACK
         self.range = 5
         self.fov = 7
+        self.half_fov = self.fov // 2
         self.mothership_range = 10
 
 
@@ -389,6 +447,7 @@ class DefenseBot(Bot):
         self.speed = 2
         self.color = Colors.DEFENSE
         self.fov = 6
+        self.half_fov = self.fov // 2
         self.range = 2
         self.mothership_range = 6
 
@@ -402,6 +461,7 @@ class RangedBot(Bot):
         self.speed = 2
         self.color = Colors.RANGED
         self.fov = 10
+        self.half_fov = self.fov // 2
         self.range = 10
         self.mothership_range = 4
 
@@ -415,6 +475,7 @@ class RepairBot(Bot):
         self.speed = 2
         self.color = Colors.REPAIR
         self.fov = 6
+        self.half_fov = self.fov // 2
         self.range = 5
         self.mothership_range = 5
         self.repairs = True
@@ -446,7 +507,7 @@ class RepairBot(Bot):
             self.target.hp = self.target.health
 
     def select_target(self):
-        allies = [ally for ally in self.field_of_view if ally[1].swarm == self.swarm and ally[1].hp < ally[1].health]
+        allies = set([ally for ally in self.field_of_view if ally[1].swarm == self.swarm and ally[1].hp < ally[1].health])
         if allies:
             a = min(allies)
             ally = a[1]
@@ -470,12 +531,23 @@ class BuilderBot(Bot):
         self.speed = 2
         self.color = Colors.BUILDER
         self.fov = 6
+        self.half_fov = self.fov // 2
         self.range = 3
         self.mothership_range = 4
         self.attacks = False
 
+    def _update_fov(self):
+        """
+        Helper for debugging.
+
+        :return:
+        """
+
+        Bot._update_fov(self)
+        return self
+
     def select_target(self):
-        supplies = [target for target in self.field_of_view if target[1].swarm == 'Supplies']
+        supplies = set([target for target in self.field_of_view if target[1].swarm == 'Supplies'])
         if supplies:
             supply_drop = min(supplies)[1]
             self.target = supply_drop
@@ -502,6 +574,7 @@ class BuilderBot(Bot):
         if len(self.swarm.bots) >= 35:
             return False
 
+        self.swarm._update_fov()
         self.swarm.supplies -= 500
         roles = [AttackBot, DefenseBot, RangedBot, RepairBot, BuilderBot, KamikazeBot]
         bot = random.choice(roles)(self.arena)
@@ -523,7 +596,9 @@ class KamikazeBot(Bot):
         self.color = Colors.KAMIKAZE
         self.range = 1
         self.fov = 10
+        self.half_fov = self.fov // 2
         self.mothership_range = 10
+        self.attacks = False
 
     def _get_dmg(self):
         return self.damage * random.randint(*self.atk) - (random.randint(*self.target.defense) * 0.25)
