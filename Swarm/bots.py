@@ -105,6 +105,9 @@ class Supplies(object):
     def __ge__(self, other):
         return other
 
+    def select_target(self):
+        return self
+
     def detect(self):
         return self
 
@@ -329,7 +332,7 @@ class Bot(object):
         """
 
         self._update_fov()
-        self.select_target()
+        # self.select_target()
         swarm = self.swarm
         mothership = False
         ms_target = False

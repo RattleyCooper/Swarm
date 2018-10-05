@@ -170,7 +170,12 @@ def main(clock, screen, pygame, arena, done):
                         del obj
                 continue
 
+            # todo: Can we have objects only run detect and select_target when a ship move is processed to increase
+            # performance?  Since ship moves are only processed every `count` iterations, we should be able to
+            # refactor these methods to run with the move process so we can free up CPU cycles for other tasks.
             obj.detect()
+            # if Clock.now[2] % 5 == 0 or first_loop:
+            obj.select_target()
 
             # if the grid does not contain the bot at the current location then
             if arena.grid[obj.grid_x][obj.grid_y] != obj:
