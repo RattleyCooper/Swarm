@@ -255,9 +255,9 @@ class Bot(object):
                 if self.move_towards(ms.target):
                     return True
 
-        # Move mothership towards closest repair bot if health drops below 0.20 percent.
+        # Move mothership towards closest repair bot if health drops below 0.40 percent.
         if self == ms:
-            if self.hp < self.health * 0.20:
+            if self.hp < self.health * 0.40:
                 repair_ships = set(ship for ship in self.proximity if isinstance(ship, RepairBot) and ship.swarm == self.swarm)
                 if repair_ships:
                     ship = min(repair_ships)
@@ -400,6 +400,8 @@ class Bot(object):
                 ms.atk = ms.atk[0] + self.target.atk[0], ms.atk[1] + self.target.atk[1]
                 if self.target.swarm.bots:
                     for bot in self.target.swarm.bots:
+                        if len(self.swarm.bots) >= 25:
+                            continue
                         bot.swarm = self.swarm
                         self.swarm.bots.add(bot)
                         # self.arena.remove_bot(bot)
@@ -573,7 +575,7 @@ class BuilderBot(Bot):
         if self.swarm.supplies < 500:
             return False
 
-        if len(self.swarm.bots) >= 35:
+        if len(self.swarm.bots) >= 25:
             return False
 
         self.swarm.detect()
@@ -585,8 +587,7 @@ class BuilderBot(Bot):
         bot = random.choice(roles)(self.arena)
         bot.built_by = self
         self.swarm.add_bot(bot)
-        bot.grid_x, bot.grid_y = self.grid_x, self.grid_y
-        self.move()
+        bot.grid_x, bot.grid_y = next(self.swarm.spawn_points)
         self.arena.add_bot(bot.grid_x, bot.grid_y, bot)
 
 
