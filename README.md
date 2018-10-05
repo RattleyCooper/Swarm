@@ -1,6 +1,7 @@
 # Swarm
 
-Swarm is a strategy rouge-like space simulator game written with `pygame/python3`.
+Swarm is a strategy rouge-like space simulator game written with `pygame/python3`.  Swarm currently equires python 3.5+
+to run.  This may change in future versions.
 
 ![](example_gameplay.gif)
 
@@ -9,7 +10,11 @@ Swarm is a strategy rouge-like space simulator game written with `pygame/python3
     pip3 install pygame
     pip3 install Swarm
 
-It's probably best to just download the archive and run the game as it's not set up as a library or anything like that.
+It's probably best to just download the archive and run the game, as it's not set up as a library or anything like that.
+
+### How to run
+
+    python3 /Path/To/Swarm/main.py
 
 ### Controls
 
@@ -17,7 +22,7 @@ Hold the `w` `a` `s` and `d` keys or the directional keys to move your mothershi
 
 Use the `tab` key to enable auto-move.  It will automatically move your mothership towards
 it's closest target.  Your ship starts with auto-move disabled.  Your ship will not automatically
-seek out repairs unless it is auto-move mode.
+seek out repairs unless it is in auto-move mode.
 
 ### Instructions
 
