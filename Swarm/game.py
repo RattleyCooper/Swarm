@@ -40,6 +40,7 @@ class Settings(object):
 class Display(object):
     settings = Settings
     size = Settings.display_size
+    bot_hsize = Settings.bot_size[0] // 2, Settings.bot_size[1] // 2
     grid_size = (int(size[0] / settings.bot_size[0]), int(size[1] / settings.bot_size[1]))
     grid_x = grid_size[0]
     grid_y = grid_size[1]
