@@ -16,7 +16,8 @@ It's probably best to just download the archive and run the game as it's not set
 Hold the `w` `a` `s` and `d` keys or the directional keys to move your mothership around.
 
 Use the `tab` key to enable auto-move.  It will automatically move your mothership towards
-it's closest target.
+it's closest target.  Your ship starts with auto-move disabled.  Your ship will not automatically
+seek out repairs unless it is auto-move mode.
 
 ### Instructions
 
