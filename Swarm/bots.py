@@ -376,6 +376,14 @@ class Bot(object):
         xd, yd = target.grid_x - self.grid_x, target.grid_y - self.grid_y
         return int(floor(sqrt(xd * xd + yd * yd)))
 
+    def absorb_stats(self, target):
+        self.health += target.health * 0.01
+        self.atk += target.atk[0] * 0.01, target.atk[1] * 0.01
+        self.defense += target.defense * 0.01
+        self.range += target.range * 0.01
+        if self.range > self.fov:
+            self.range = self.fov
+
     def attack(self):
         if not self.target or self.target.is_dead or self.target_range(self.target) > self.range:
             return False
