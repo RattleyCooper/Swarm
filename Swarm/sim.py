@@ -67,11 +67,4 @@ def chunks_fit2(itterable, lists):
 
 
 if __name__ == '__main__':
-    l1 = []
-    for i in range(50, random.randint(150,200)):
-        l1.append(random.randint(1000, 5000))
-
-    l2 = l1.copy()
-
-    c = chunks_x(l1, 4)
-    print('done')
+    pass

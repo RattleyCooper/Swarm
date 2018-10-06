@@ -80,13 +80,6 @@ class Swarm(object):
         self.target = targets[targets.index(max(targets, key=targets.count))]
         return self
 
-    # def spawn(self):
-    #     spawnables = [s for s in self.bots if s.grid_x and s.grid_y and self.arena.grid[s.grid_x][s.grid_y] is None]
-    #     if spawnables:
-    #         ship = spawnables.pop()
-    #         x, y = ship.last_move
-    #         self.arena.move_bot(x, y, ship)
-
 
 class Supplies(object):
     def __init__(self, x=None, y=None):
@@ -199,8 +192,6 @@ class Bot(object):
         grid_x_range = range(max((1, self.grid_x-half_fov)), min((self.grid_x+half_fov,self.arena.display.grid_size[0]+1)))
         grid_y_range = range(max((1, self.grid_y-half_fov)), min((self.grid_y+half_fov,self.arena.display.grid_size[1]+1)))
         potential_sightings = (self.arena.grid[gx][gy] for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is not None)
-        #if isinstance(self, MotherShipBot):
-        #    self.spawn_points = ((gx, gy) for gx in grid_x_range for gy in grid_y_range if self.arena.grid[gx][gy] is None)
         for bot in potential_sightings:
             if bot.is_dead:
                 continue
@@ -211,15 +202,6 @@ class Bot(object):
 
         self.proximity.update(proximity)
         self.field_of_view.update(fov_list)
-
-    def _move(self, x_same, y_same, nx, ny):
-        if self.arena.grid[nx][ny] is None:
-            return self.arena.move_bot(nx, ny, self)
-        else:
-            if x_same and not self.arena.move_bot(nx + 1, ny, self):
-                return self.arena.move_bot(nx - 1, ny, self)
-            elif y_same and not self.arena.move_bot(nx, ny + 1, self):
-                return self.arena.move_bot(nx, ny - 1, self)
 
     def move_towards(self, target):
         tx, ty = target.grid_x, target.grid_y
@@ -299,10 +281,6 @@ class Bot(object):
 
     def surrounding_coordinates(self):
         x, y = self.grid_x, self.grid_y
-        xl = self.grid_x - 1
-        xh = self.grid_x + 1
-        yl = self.grid_y - 1
-        yh = self.grid_y + 1
 
         up = x, y - 1
         down = x, y + 1
