@@ -208,11 +208,15 @@ def main(clock, screen, pygame, arena, done):
                 continue
 
             if isinstance(obj.swarm, Swarm) and obj.swarm.name == 'Player 1':
-                e = pygame.draw.ellipse(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+                # find point closest to target
+                # get 1 angle and extend out P pixels
+                # use resulting 2 points to
+                e = pygame.draw.ellipse(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 2)
+
             elif isinstance(obj, Supplies):
-                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 2)
             else:
-                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 0)
+                e = pygame.draw.rect(screen, obj.color, [obj.grid_x * BOT_SIZE[0], obj.grid_y * BOT_SIZE[1], BOT_SIZE[0], BOT_SIZE[1]], 2)
 
             if obj.target:
                 lx = [obj.grid_x*10 + Display.bot_hsize[0], obj.grid_y*10 + Display.bot_hsize[1]]
