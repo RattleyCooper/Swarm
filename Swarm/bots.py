@@ -297,7 +297,7 @@ class Bot(object):
         down_right = x + 1, y + 1
         down_left = x - 1, y + 1
 
-        return [up, down, left, right, up_left, up_right]
+        return [up, down, left, right, up_left, up_right, down_left, down_right]
 
     def random_coordinates(self):
         rxl = self.grid_x - 1
