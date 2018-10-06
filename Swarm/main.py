@@ -103,14 +103,20 @@ def process_move(event, player_mothership, count, auto_move=False):
     pm = player_mothership
     if pm.is_dead:
         return False
-    if event.key == 273 or event.key == 119:  # UP OR W
-        govern_speed(pm.grid_x, pm.grid_y - 1, pm, count)
-    elif event.key == 276 or event.key == 97:  # LEFT OR A
-        govern_speed(pm.grid_x - 1, pm.grid_y, pm, count)
-    elif event.key == 274 or event.key == 115:  # DOWN OR S
-        govern_speed(pm.grid_x, pm.grid_y + 1, pm, count)
-    elif event.key == 275 or event.key == 100:  # RIGHT OR D
-        govern_speed(pm.grid_x + 1, pm.grid_y, pm, count)
+    if event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
+        if event.key == 273 or event.key == 119:  # UP OR W
+            govern_speed(pm.grid_x, pm.grid_y - 1, pm, count)
+        elif event.key == 276 or event.key == 97:  # LEFT OR A
+            govern_speed(pm.grid_x - 1, pm.grid_y, pm, count)
+        elif event.key == 274 or event.key == 115:  # DOWN OR S
+            govern_speed(pm.grid_x, pm.grid_y + 1, pm, count)
+        elif event.key == 275 or event.key == 100:  # RIGHT OR D
+            govern_speed(pm.grid_x + 1, pm.grid_y, pm, count)
+
+
+def px_to_grid(pos):
+    x, y = pos
+    return x // Settings.bot_size[0], y // Settings.bot_size[1]
 
 
 # -------- Main Program Loop -----------
@@ -127,6 +133,7 @@ def main(clock, screen, pygame, arena, done):
     moving = False
     moving_keys = [273, 274, 275, 276, 97, 100, 115, 119]
     auto_move = False
+    paused = False
     while not done:
         if count % 10000 == 0:
             count = 0
@@ -134,6 +141,10 @@ def main(clock, screen, pygame, arena, done):
         # --- Main event loop
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
+                if event.key == 27:
+                    paused = True if not paused else False
+                    break
+                if paused : break
                 process_move(event, pm, count)
                 if event.key in moving_keys:
                     moving = event
@@ -144,11 +155,22 @@ def main(clock, screen, pygame, arena, done):
             elif event.type == pygame.KEYUP:
                 if event.key in moving_keys:
                     moving = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if pm and not pm.is_dead:
+                    auto_move = True
+                    pm.clicked_position = px_to_grid(event.pos)
+                    pm.move()
+                    # process_move(event, pm, count)
             elif event.type == pygame.QUIT:
                 done = True
 
+        if paused: continue
         # --- Game logic should go here
-
+        if pm.grid_x and pm.grid_y and pm.clicked_position:
+            if pm.grid_x == pm.clicked_position[0] and pm.grid_y == pm.clicked_position[1]:
+                auto_move = False
+                pm.clicked_position = None
         # --- Screen-clearing code goes here
 
         # Here, we clear the screen to white. Don't put other drawing commands

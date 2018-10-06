@@ -149,6 +149,7 @@ class Bot(object):
         self.range = 1
         self.is_dead = False
         self.last_move = (0, 0)
+        self.clicked_position = None
 
         self.target = None
         self.attacks = True
@@ -204,7 +205,10 @@ class Bot(object):
         self.field_of_view.update(fov_list)
 
     def move_towards(self, target):
-        tx, ty = target.grid_x, target.grid_y
+        if isinstance(target, tuple):
+            tx, ty = target
+        else:
+            tx, ty = target.grid_x, target.grid_y
         x, y = nx, ny = self.grid_x, self.grid_y
 
         if tx > x:
@@ -236,7 +240,7 @@ class Bot(object):
 
     def move(self):
         ms = self.swarm.mothership
-        if ms and self != ms:
+        if ms and self != ms and not ms.is_dead:
             tr = self.target_range(ms)
             if tr > self.mothership_range:
                 if self.move_towards(ms):
@@ -250,12 +254,16 @@ class Bot(object):
 
         # Move mothership towards closest repair bot if health drops below 0.40 percent.
         if self == ms:
+            if self.grid_x and self.grid_y and self.clicked_position:
+                if self.grid_x == self.clicked_position[0] and self.grid_y == self.clicked_position[1]:
+                    self.clicked_position = None
             if self.hp < self.health * 0.40:
                 repair_ships = set(ship for ship in self.proximity if isinstance(ship, RepairBot) and ship.swarm == self.swarm)
                 if repair_ships:
                     ship = min(repair_ships)
-                    if self.move_towards(ship):
-                        return True
+                    return self.move_towards(ship)
+            if self.clicked_position:
+                return self.move_towards(self.clicked_position)
 
         # If there is a target and it is out of range, move towards it
         if self.target and not self.in_range(self.target):
@@ -263,6 +271,7 @@ class Bot(object):
                 self.target = None
                 if self.rmove():
                     return True
+                return False
             if self.target and self.move_towards(self.target):
                 return True
 
@@ -272,12 +281,9 @@ class Bot(object):
         return self.target_range(target) <= self.range
 
     def rmove(self):
-        x, y = self.random_coordinates()
-        self.last_move = x, y
-        sc = self.surrounding_coordinates()
-        random.shuffle(sc)
-        move = (*sc.pop(), self)
-        return self.arena.move_bot(*move)
+        surrounding_coordinates = self.surrounding_coordinates()
+        random.shuffle(surrounding_coordinates)
+        return self.arena.move_bot(*(*surrounding_coordinates.pop(), self))
 
     def surrounding_coordinates(self):
         x, y = self.grid_x, self.grid_y
@@ -343,6 +349,8 @@ class Bot(object):
         self.drop_supplies()
         self.grid_x = None
         self.grid_y = None
+        self.target = None
+
         return self
 
     def in_fov(self):
@@ -369,14 +377,14 @@ class Bot(object):
         return int(floor(sqrt(xd * xd + yd * yd)))
 
     def attack(self):
-        if not self.target or self.target_range(self.target) > self.range:
+        if not self.target or self.target.is_dead or self.target_range(self.target) > self.range:
             return False
 
         dmg = self.damage * random.randint(*self.atk) - (random.randint(*self.target.defense) * 0.25)
         self.target.hp -= dmg
         if self.target.hp <= 0:
             self.target.destroy()
-            self.target.is_dead = True
+            self.target = None
             # Take stats from target and give it to attacker's mothership
             # todo: Fix so that things are
             if isinstance(self.target, MotherShipBot):
@@ -390,7 +398,7 @@ class Bot(object):
                 if self.target.swarm.bots:
                     for bot in self.target.swarm.bots:
                         if len(self.swarm.bots) >= 25:
-                            continue
+                            break
                         bot.swarm = self.swarm
                         self.swarm.bots.add(bot)
                         # self.arena.remove_bot(bot)
@@ -484,12 +492,12 @@ class RepairBot(Bot):
 
     def move(self):
         ms = self.swarm.mothership
-        if ms:
+        if ms and not ms.is_dead:
             if self.target_range(ms) > self.mothership_range:
                 if self.move_towards(ms):
                     return
 
-        if self.target:
+        if self.target and not self.target.is_dead:
             if self.target_range(self.target) > (self.range - 2):
                 if self.move_towards(self.target):
                     return
@@ -502,7 +510,7 @@ class RepairBot(Bot):
             self.rmove()
 
     def attack(self):
-        if not self.target or self.target_range(self.target) > self.range:
+        if not self.target or self.target.is_dead or self.target_range(self.target) > self.range:
             return False
 
         dmg = self.damage * random.randint(*self.atk) - (random.randint(*self.target.defense) * 0.25)
@@ -560,7 +568,7 @@ class BuilderBot(Bot):
         return None
 
     def attack(self):
-        if not self.target or self.target_range(self.target) > self.range:
+        if not self.target or self.target.is_dead or self.target_range(self.target) > self.range:
             return False
 
         dmg = int(self.damage * random.randint(*self.atk))
