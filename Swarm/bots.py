@@ -7,6 +7,13 @@ except ImportError:
     from .game import Arena, Colors, Display, Void
 
 
+class Tile(object):
+    def __init__(self):
+        self.grid_x = None
+        self.grid_y = None
+        self.solid = True
+
+
 class Swarm(object):
     def __init__(self, name='', bots=None, arena=None):
         if not name:
