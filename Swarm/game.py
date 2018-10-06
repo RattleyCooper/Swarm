@@ -81,6 +81,17 @@ class Arena(object):
     def remove_dead(self):
         self.bots = set(bot for bot in self.bots if not bot.is_dead)
 
+    def remove_bots(self, bots):
+        for bot in bots:
+            if bot.grid_x and bot.grid_y:
+                grid_item = self.grid[bot.grid_x][bot.grid_y]
+                if grid_item is not None:
+                    self.grid[bot.grid_x][bot.grid_y] = None
+            try:
+                self.bots.remove(bot)
+            except KeyError:
+                pass
+
     def spawn_swarm(self):
         now = datetime.now()
         now = Clock.now = (now.hour, now.minute, now.second, now.microsecond)
