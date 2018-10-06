@@ -23,8 +23,15 @@ class Colors(object):
     DEFENSE = (34, 82, 173)     # Blue
     REPAIR = (173, 34, 90)      # Magenta
     RANGED = (34, 173, 52)      # Green
-    BUILDER = (173, 82, 34)     # Orange
+    BUILDER = (249, 105, 9)     # Orange
     KAMIKAZE = (173, 163, 34)   # Yellow
+    ASTEROID = (104, 70, 47)    # Brown
+    WALL = (96, 94, 93)         # Steel
+    DARK_MATTER = (45, 43, 42)  # Dark grey
+    DARK_ENERGY = (58, 37, 71)  # Dark Purple
+    TRADER = (0, 255, 182)      # Mint Green
+    CLOAKED = BLACK             # BLACK
+    UNCLOACKED = (28, 28, 28)   # ALMOST BLACK
 
 
 class ShipRoles(object):
