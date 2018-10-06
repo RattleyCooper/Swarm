@@ -435,6 +435,17 @@ class MotherShipBot(Bot):
         self.fov = 50
         self.half_fov = self.fov // 2
 
+        # todo: track the last target for situations where a ship goes out of range
+        # have the mothership check to see if the last target is still alive.
+        # if it is then look at the last_targets_known_location variable and have
+        # the mothership start a search and destroy mission.
+        self.last_target = self.target
+        self.last_targets_known_location = None
+
+        # todo: Run ship scanner every 20 seconds if mothership hasn't had a target.
+        # Give chance to find any enemy ship on the map and set it to the last targets
+        # known location for search and destroy.
+
 
 class AttackBot(Bot):
     def __init__(self, arena, x=None, y=None):
@@ -593,7 +604,7 @@ class BuilderBot(Bot):
         if not self.swarm.spawn_points:
             return False
 
-        # todo: Limit the amount of each bot type for building. That way the swarm does not end up
+        # todo: Limit the amount of each ship type for building. That way the swarm does not end up
         # with 15 builder ships or 15 repair ships.
 
         self.swarm.supplies -= 500

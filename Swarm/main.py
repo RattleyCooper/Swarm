@@ -214,6 +214,15 @@ def main(clock, screen, pygame, arena, done):
             last = now
             # print('Removing Dead Swarms...')
 
+        # todo: Every 10-15 seconds any debris (supplies/salvage) should fall in on itself
+        # to simulate the gravity pulling it together.  This can be done by looking at
+        # any salvage on the map and checking each side of the piece to see if it is
+        # surrounded.  If it's surrounded then leave it alone, but if it has an exposed
+        # side and there is salvage touching it then have that salvage's value added
+        # to the nearest salvage and then remove it from the map.  This should shrink
+        # clusters of salvage to a 1x1 block.  Clusters can be tracked as well so that
+        # the clusters of salvage don't shrink too much.
+
         # --- Go ahead and update the screen with what we've drawn.
         pygame.display.flip()
 
