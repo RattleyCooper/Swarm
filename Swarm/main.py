@@ -4,8 +4,8 @@ from hashlib import md5
 
 import pygame
 
-from bots import AttackBot, DefenseBot, RangedBot, RepairBot
-from bots import BuilderBot, KamikazeBot, Swarm, MotherShipBot, Supplies
+from game import AttackBot, DefenseBot, RangedBot, RepairBot
+from game import BuilderBot, KamikazeBot, Swarm, MotherShipBot, Supplies
 from game import Display, Settings, Arena, Colors, ShipRoles, Game
 from sim import Queue, QueueControl, ClockControl, Clock
 
